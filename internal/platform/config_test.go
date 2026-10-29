@@ -3,6 +3,7 @@ package platform
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func env(pairs map[string]string) func(string) string {
@@ -112,6 +113,90 @@ func TestInvalidConfigFails(t *testing.T) {
 		"collector without scheme":           {"OTEL_EXPORTER_OTLP_ENDPOINT": "otel-collector:4317"},
 		"collector without host":             {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://"},
 		"OTEL_SDK_DISABLED is not a boolean": {"OTEL_SDK_DISABLED": "maybe"},
+	}
+
+	for name, vars := range cases {
+		t.Run(name, func(t *testing.T) {
+			if _, err := LoadConfig(env(vars)); err == nil {
+				t.Fatalf("invalid configuration (%v) was accepted", vars)
+			}
+		})
+	}
+}
+
+func TestResilienceAndCacheDefaults(t *testing.T) {
+	cfg, err := LoadConfig(env(nil))
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	wantR := Resilience{
+		PartnerTimeout:    2 * time.Second,
+		FailuresToOpen:    5,
+		OpenCooldown:      30 * time.Second,
+		HalfOpenSuccesses: 2,
+	}
+	if cfg.Resilience != wantR {
+		t.Errorf("resilience %+v, want %+v", cfg.Resilience, wantR)
+	}
+
+	wantC := Cache{
+		Enabled:   true,
+		RedisAddr: "localhost:6379",
+		TTL:       300 * time.Second,
+		StaleFor:  24 * time.Hour,
+	}
+	if cfg.Cache != wantC {
+		t.Errorf("cache %+v, want %+v", cfg.Cache, wantC)
+	}
+}
+
+func TestResilienceAndCacheReadFromEnvironment(t *testing.T) {
+	cfg, err := LoadConfig(env(map[string]string{
+		"PARTNER_TIMEOUT":             "1500ms",
+		"BREAKER_FAILURES_TO_OPEN":    "3",
+		"BREAKER_OPEN_COOLDOWN":       "10s",
+		"BREAKER_HALF_OPEN_SUCCESSES": "1",
+		"CACHE_ENABLED":               "false",
+		"REDIS_ADDR":                  "redis:6379",
+		"CACHE_TTL":                   "120s",
+		"CACHE_STALE_FOR":             "1h",
+	}))
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	wantR := Resilience{
+		PartnerTimeout:    1500 * time.Millisecond,
+		FailuresToOpen:    3,
+		OpenCooldown:      10 * time.Second,
+		HalfOpenSuccesses: 1,
+	}
+	if cfg.Resilience != wantR {
+		t.Errorf("resilience %+v, want %+v", cfg.Resilience, wantR)
+	}
+
+	wantC := Cache{
+		Enabled:   false,
+		RedisAddr: "redis:6379",
+		TTL:       120 * time.Second,
+		StaleFor:  time.Hour,
+	}
+	if cfg.Cache != wantC {
+		t.Errorf("cache %+v, want %+v", cfg.Cache, wantC)
+	}
+}
+
+func TestInvalidResilienceAndCacheConfigFails(t *testing.T) {
+	cases := map[string]map[string]string{
+		"timeout not a duration":      {"PARTNER_TIMEOUT": "fast"},
+		"timeout zero":                {"PARTNER_TIMEOUT": "0s"},
+		"failures not an int":         {"BREAKER_FAILURES_TO_OPEN": "many"},
+		"failures zero":               {"BREAKER_FAILURES_TO_OPEN": "0"},
+		"cooldown negative":           {"BREAKER_OPEN_COOLDOWN": "-5s"},
+		"half-open successes not int": {"BREAKER_HALF_OPEN_SUCCESSES": "two"},
+		"cache enabled not a bool":    {"CACHE_ENABLED": "maybe"},
+		"ttl not a duration":          {"CACHE_TTL": "soon"},
 	}
 
 	for name, vars := range cases {
