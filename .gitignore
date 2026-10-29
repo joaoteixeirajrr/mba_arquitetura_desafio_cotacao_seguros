@@ -18,6 +18,9 @@ vendor/
 # Logs
 *.log
 
+# Enunciado de trabalho local (nao faz parte da entrega versionada)
+desafio.md
+
 # Editores / SO
 .DS_Store
 .idea/

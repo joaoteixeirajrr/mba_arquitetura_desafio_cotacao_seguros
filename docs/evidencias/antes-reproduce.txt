@@ -1,0 +1,24 @@
+# EVIDENCIA "ANTES" — plataforma sem protecao (codigo original do starter)
+# Comando: make down && make reproduce   (carga padrao: 10 baseline + 200 com 50 em voo)
+# Maquina: macOS arm64, Docker 29.8.2, Compose v5.5.0 — medido em 2026-10-28
+# Legenda: agregacao em serie, sem timeout/breaker/cache/fallback. p95 da carga = 8,01s;
+#          qualquer 503 da partner-flaky vira 502 e derruba a cotacao inteira (80/200 na carga).
+# ---------------------------------------------------------------------------------------------
+
+baseline — 10 requests, 1 in flight, 02:22:59 UTC to 02:23:18 UTC
+  success        5 of 10 (50%)
+  latency        p50 1.90s   p95 2.09s   p99 2.09s   max 2.09s
+  throughput     0.5 req/s in 18.90s
+  failures       HTTP 502 from partner-flaky: 5
+
+load — 200 requests, 50 in flight, 02:23:18 UTC to 02:23:43 UTC
+  success        120 of 200 (60%)
+  latency        p50 6.12s   p95 8.01s   p99 8.04s   max 8.06s
+  throughput     8.0 req/s in 24.91s
+  failures       HTTP 502 from partner-flaky: 80
+
+baseline → load
+  p95 latency    2.09s → 8.01s   3.8x
+  max latency    2.09s → 8.06s   3.9x
+  success        50% → 60%
+  throughput     0.5 → 8.0 req/s
