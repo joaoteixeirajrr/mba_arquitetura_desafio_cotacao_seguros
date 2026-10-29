@@ -1,0 +1,31 @@
+# EVIDENCIA "DEPOIS" — plataforma protegida (breaker + timeout + cache + fallback)
+# Comando: make down && make reproduce   (mesma carga padrao: 10 baseline + 200 com 50 em voo)
+# Maquina: macOS arm64, Docker 29.8.2, Compose v5.5.0 — medido em 2026-10-28
+# Legenda: agregacao paralela, timeout de 2s por parceira, breaker per-parceira e cache tenant-scoped.
+#          Sucesso 100%/100% (era 50%/60%); p95 da carga 2,01s (era 8,01s); p50 da carga 11ms
+#          (cache quente servindo as 5 cotacoes distintas da carga). Nenhum 502: parceira fora vira
+#          resposta parcial/degradada em vez de derrubar a cotacao inteira.
+# ---------------------------------------------------------------------------------------------
+
+baseline — 10 requests, 1 in flight, 02:35:07 UTC to 02:35:18 UTC
+  success        10 of 10 (100%)
+  latency        p50 1.55s   p95 1.74s   p99 1.74s   max 1.74s
+  throughput     0.9 req/s in 11.40s
+
+load — 200 requests, 50 in flight, 02:35:18 UTC to 02:35:20 UTC
+  success        200 of 200 (100%)
+  latency        p50 11ms   p95 2.01s   p99 2.04s   max 2.04s
+  throughput     95.8 req/s in 2.09s
+
+baseline → load
+  p95 latency    1.74s → 2.01s   1.2x
+  max latency    1.74s → 2.04s   1.2x
+  success        100% → 100%
+  throughput     0.9 → 95.8 req/s
+
+# Comparacao antes -> depois (mesma carga, mesma maquina, ambiente zerado nas duas):
+#   sucesso baseline   50%   -> 100%
+#   sucesso carga      60%   -> 100%
+#   p95 carga          8,01s -> 2,01s   (-75%)
+#   p50 carga          6,12s -> 11ms
+#   vazao carga        8,0   -> 95,8 req/s
