@@ -42,6 +42,10 @@ services:
       PORT: "8080"
       PARTNER_ENDPOINTS: "partner-slow=http://partner-slow:8080,partner-flaky=http://partner-flaky:8080,partner-degrading=http://partner-degrading:8080"
       TENANTS: "corretora-a,corretora-b"
+      # O cache tenant-scoped vive no Redis abaixo. O REDIS_ADDR liga a API a ele;
+      # os demais parametros de resiliencia usam os defaults defendidos no docs/sad.md
+      # (PARTNER_TIMEOUT=2s, breaker 5 falhas / cooldown 30s / 2 sucessos, CACHE_TTL=300s).
+      REDIS_ADDR: "redis:6379"
       # O SDK do OpenTelemetry ja sobe ligado e manda tudo para o Collector — o aluno nao precisa
       # escrever uma linha para ver o trace da requisicao no Jaeger. Para desligar: OTEL_SDK_DISABLED=true.
       OTEL_SERVICE_NAME: quotation-api
@@ -52,6 +56,10 @@ services:
       partner-flaky:
         condition: service_healthy
       partner-degrading:
+        condition: service_healthy
+      # O cache sobe antes da API; se o Redis cair em runtime a API degrada para
+      # o caminho sem cache (buildCache em cmd/quotation-api/main.go), nao quebra.
+      redis:
         condition: service_healthy
       # service_started, e nao service_healthy: o exportador conecta preguicosamente e reconecta
       # sozinho. Amarrar a API a saude do Collector seria dar a observabilidade o poder de derrubar

@@ -41,6 +41,11 @@ func (s State) String() string {
 	}
 }
 
+// Code returns the numeric code used for the breaker-state metric
+// (0 closed, 1 open, 2 half_open). It is stable across the codebase so the
+// gauge and docs/sad.md agree.
+func (s State) Code() int64 { return int64(s) }
+
 // Settings configures a Breaker. The values come from platform.Resilience and
 // are defended in docs/sad.md section 4.
 type Settings struct {
