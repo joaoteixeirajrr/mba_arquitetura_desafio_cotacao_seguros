@@ -1,6 +1,7 @@
 package quotation
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -14,11 +15,18 @@ const TenantHeader = "X-Tenant-Id"
 const requestLimit = 1 << 20
 
 type API struct {
-	service *Service
+	service QuoteService
 	tenants map[string]bool
 }
 
-func NewAPI(service *Service, tenants []string) *API {
+// QuoteService is what the HTTP handler needs: a quotation engine. Both the
+// legacy *Service (serial, all-or-nothing) and the *ResilientService (cache +
+// breaker + fallback) satisfy it.
+type QuoteService interface {
+	Quote(ctx context.Context, tenant string, request Request) (Response, error)
+}
+
+func NewAPI(service QuoteService, tenants []string) *API {
 	known := make(map[string]bool, len(tenants))
 	for _, t := range tenants {
 		known[t] = true

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/GuilhermeOliveira591/mba_arquitetura_desafio_cotacao_seguros/internal/cache"
 	"github.com/GuilhermeOliveira591/mba_arquitetura_desafio_cotacao_seguros/internal/partner"
 )
 
@@ -61,8 +62,40 @@ type partnerRequest struct {
 	Request
 }
 
+// Risk projects the request onto the cache's normalized risk identity. It is
+// called after Normalize, so casing and spacing are already settled.
+func (r Request) Risk() cache.Risk {
+	return cache.Risk{
+		Document:   r.Driver.Document,
+		BirthYear:  r.Driver.BirthYear,
+		Plate:      r.Vehicle.Plate,
+		Model:      r.Vehicle.Model,
+		Year:       r.Vehicle.Year,
+		ValueCents: r.Vehicle.ValueCents,
+		Coverage:   r.Coverage,
+	}
+}
+
 type Response struct {
 	TenantID  string          `json:"tenant_id"`
 	Quotes    []partner.Quote `json:"quotes"`
 	ElapsedMs int64           `json:"elapsed_ms"`
+	// Degraded tells the broker that this is not a complete, live answer. It is
+	// the contract change the fallback introduces: when true, the broker must
+	// treat the quotes as partial and/or aged. Absent (false) on the normal path.
+	Degraded *Degraded `json:"degraded,omitempty"`
+}
+
+// Degraded carries everything the broker needs to know that a response is not a
+// complete live quote, so it is never mistaken for a normal one. A premium is
+// always from a partner or from traceable cache — never invented.
+type Degraded struct {
+	// Source is "partial" (some partners answered live, others were skipped or
+	// failed) or "cache" (served entirely from a previous quote).
+	Source string `json:"source"`
+	// Missing lists the partners that did not contribute a live quote.
+	Missing []string `json:"missing,omitempty"`
+	// AgeSeconds is how old the cached quote is, in seconds. Zero for a purely
+	// partial (live) degraded response.
+	AgeSeconds int64 `json:"age_seconds,omitempty"`
 }
