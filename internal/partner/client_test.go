@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/GuilhermeOliveira591/mba_arquitetura_desafio_cotacao_seguros/internal/platform"
 )
@@ -96,5 +97,32 @@ func TestQuoteHonoursCancellation(t *testing.T) {
 
 	if _, err := NewClient().Quote(ctx, p, map[string]string{}); err == nil {
 		t.Fatal("cancelled context did not interrupt the call")
+	}
+}
+
+func TestQuoteTimesOut(t *testing.T) {
+	release := make(chan struct{})
+	p, closeServer := testPartner(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	}))
+	defer closeServer()
+	defer close(release)
+
+	client := NewClient(WithTimeout(50 * time.Millisecond))
+
+	_, err := client.Quote(context.Background(), p, map[string]string{})
+	if err == nil {
+		t.Fatal("a call slower than the timeout was treated as success")
+	}
+
+	var failure *Error
+	if !errors.As(err, &failure) {
+		t.Fatalf("timeout error %v is not a *partner.Error", err)
+	}
+	if failure.Partner != "partner-flaky" {
+		t.Fatalf("timeout error does not identify the partner: %+v", failure)
 	}
 }

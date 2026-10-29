@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/GuilhermeOliveira591/mba_arquitetura_desafio_cotacao_seguros/internal/platform"
 )
@@ -24,8 +25,26 @@ type Client struct {
 	http *http.Client
 }
 
-func NewClient() *Client {
-	return &Client{http: &http.Client{Transport: platform.InstrumentTransport(http.DefaultTransport)}}
+// Option configures a Client.
+type Option func(*Client)
+
+// WithTimeout sets a hard ceiling on each partner call. A call that exceeds it
+// is cancelled and surfaces as a *partner.Error, which the circuit breaker
+// counts as a failure. This is the fourth hole closed: the http.Client used to
+// have Timeout zero (internal/partner/client.go).
+func WithTimeout(d time.Duration) Option {
+	return func(c *Client) { c.http.Timeout = d }
+}
+
+// NewClient builds a partner client. With no options it keeps the original
+// behaviour (no timeout), which the starter tests rely on; main.go passes
+// WithTimeout to enforce the ceiling defended in docs/sad.md.
+func NewClient(opts ...Option) *Client {
+	c := &Client{http: &http.Client{Transport: platform.InstrumentTransport(http.DefaultTransport)}}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 const responseLimit = 1 << 20
