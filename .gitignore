@@ -21,9 +21,15 @@ vendor/
 # Enunciado de trabalho local (nao faz parte da entrega versionada)
 desafio.md
 
+# Ambiente de plotagem das evidencias (gera os PNG em docs/evidencias/graficos/)
+.venv-plot/
+
 # Editores / SO
 .DS_Store
 .idea/
 .vscode/
 *.swp
 *~
+
+# Override temporario para gerar evidencias (porta host) — nao faz parte da entrega
+docker-compose.override.yml

@@ -11,7 +11,8 @@ timeout, tudo-ou-nada) com **circuit breaker + timeout por parceira**, **cache t
 - **Evidências:** [`docs/evidencias/`](docs/evidencias/)
   - [`antes-reproduce.txt`](docs/evidencias/antes-reproduce.txt) / [`depois-reproduce.txt`](docs/evidencias/depois-reproduce.txt) — relatório `make reproduce`, mesma carga (10 baseline + 200 com 50 em voo).
   - [`make-test.txt`](docs/evidencias/make-test.txt) — suite inteira verde (`go test -count=1 ./...`).
-  - [`promql.md`](docs/evidencias/promql.md) — consultas PromQL + valores medidos (estado do breaker, hit rate, p95, latência por parceira), com janela declarada.
+  - [`promql.md`](docs/evidencias/promql.md) — consultas PromQL + **gráficos PNG** (um por execução, antes/depois na mesma escala) do estado do breaker, hit rate e p95, cada um com a consulta e a janela ao lado; mais latência por parceira.
+  - [`graficos/`](docs/evidencias/graficos/) — os 6 PNGs capturados durante cada `make reproduce` (`antes-*.png` / `depois-*.png`).
   - [`trace-short-circuited.json`](docs/evidencias/trace-short-circuited.json) — requisição com breaker aberto: a parceira curto-circuitada **não tem span de saída**.
   - [`trace-cache-served.json`](docs/evidencias/trace-cache-served.json) — resposta de cache: só o span de servidor, nenhum span de parceira.
 
